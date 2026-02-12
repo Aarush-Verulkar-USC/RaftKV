@@ -19,29 +19,9 @@ Building a consensus algorithm from the ground up is one of the best ways to dee
 
 ## Architecture
 
-```
-Client CLI
-    │
-    │  gRPC (Put / Get / Delete)
-    ▼
-┌────────────────────────────────┐
-│         KV Server Layer        │  Accepts client requests, redirects to leader
-│     (pkg/kv/server.go)        │
-└──────────────┬─────────────────┘
-               │ Submit(command)
-               ▼
-┌────────────────────────────────┐
-│          Raft Layer            │  Leader election, log replication, commit tracking
-│       (pkg/raft/raft.go)      │
-└──┬────────────┬────────────┬──┘
-   │            │            │
-   ▼            ▼            ▼
- Node 1      Node 2      Node 3         gRPC AppendEntries / RequestVote
-(Leader)   (Follower)   (Follower)
-   │            │            │
-   ▼            ▼            ▼
- BoltDB      BoltDB      BoltDB         Persistent state (term, log, votes)
-```
+<p align="center">
+  <img src="docs/architecture.svg" alt="RaftKV Architecture" width="800"/>
+</p>
 
 ### How a write flows through the system
 
