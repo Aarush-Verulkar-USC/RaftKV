@@ -1,0 +1,1459 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <title>Raft Consensus Protocol — Interactive Visualization</title>
+  <style>
+    :root {
+      --bg: #030304;
+      --surface: #0a0a0c;
+      --border: #1e1e24;
+      --text: #e1e4ed;
+      --text-dim: #8b8fa3;
+      --green: #34d399;
+      --blue: #60a5fa;
+      --orange: #fbbf24;
+      --red: #f87171;
+      --purple: #c084fc;
+      --cyan: #22d3ee;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    /* Layout */
+    .app {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      grid-template-rows: auto 1fr auto;
+      height: 100vh;
+      gap: 0;
+    }
+
+    header {
+      grid-column: 1 / -1;
+      padding: 12px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+    }
+
+    header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    header h1 span {
+      color: var(--green);
+    }
+
+    .header-links {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .header-links a {
+      color: var(--text-dim);
+      text-decoration: none;
+      font-size: 12px;
+      transition: color 0.2s;
+    }
+
+    .header-links a:hover {
+      color: var(--text);
+    }
+
+    /* Main canvas area */
+    .main-area {
+      position: relative;
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Right sidebar */
+    .sidebar {
+      grid-row: 2 / 4;
+      border-left: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-section {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-section h3 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+    }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .btn {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+      transition: all 0.15s;
+      text-align: left;
+    }
+
+    .btn:hover {
+      border-color: var(--text-dim);
+      background: #1f2230;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn.danger {
+      border-color: #5c2626;
+    }
+
+    .btn.danger:hover {
+      border-color: var(--red);
+      background: #2a1515;
+    }
+
+    .btn.success {
+      border-color: #1a4a2e;
+    }
+
+    .btn.success:hover {
+      border-color: var(--green);
+      background: #152a1a;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .btn-row .btn {
+      flex: 1;
+      text-align: center;
+    }
+
+    .kv-input-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .kv-input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 12px;
+      outline: none;
+    }
+
+    .kv-input:focus {
+      border-color: var(--blue);
+    }
+
+    .kv-input::placeholder {
+      color: #4a4d5a;
+    }
+
+    /* Speed slider */
+    .speed-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .speed-row label {
+      font-size: 11px;
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+
+    .speed-row input[type=range] {
+      flex: 1;
+      accent-color: var(--green);
+    }
+
+    .speed-val {
+      font-size: 11px;
+      color: var(--text);
+      min-width: 30px;
+      text-align: right;
+    }
+
+    /* Log panel */
+    .log-panel {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .log-panel h3 {
+      padding: 16px 16px 12px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+    }
+
+    .log-entries {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 16px 16px;
+    }
+
+    .log-entries::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .log-entries::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .log-entries::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 2px;
+    }
+
+    .log-entry {
+      font-size: 11px;
+      padding: 4px 0;
+      line-height: 1.4;
+      color: var(--text-dim);
+      border-bottom: 1px solid #1f2230;
+    }
+
+    .log-entry .time {
+      color: #4a4d5a;
+      margin-right: 6px;
+    }
+
+    .log-entry.election {
+      color: var(--orange);
+    }
+
+    .log-entry.leader {
+      color: var(--green);
+    }
+
+    .log-entry.replicate {
+      color: var(--blue);
+    }
+
+    .log-entry.commit {
+      color: var(--purple);
+    }
+
+    .log-entry.failure {
+      color: var(--red);
+    }
+
+    .log-entry.client {
+      color: var(--cyan);
+    }
+
+    /* Node logs view */
+    .node-logs {
+      padding: 0 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .node-log-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .node-log-label {
+      font-size: 11px;
+      color: var(--text-dim);
+      min-width: 24px;
+    }
+
+    .node-log-entries {
+      display: flex;
+      gap: 3px;
+      flex-wrap: wrap;
+    }
+
+    .log-block {
+      width: 28px;
+      height: 20px;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      font-weight: 600;
+      color: var(--bg);
+    }
+
+    .log-block.committed {
+      background: var(--green);
+    }
+
+    .log-block.uncommitted {
+      background: var(--orange);
+      opacity: 0.7;
+    }
+
+    /* Bottom bar */
+    .bottom-bar {
+      border-top: 1px solid var(--border);
+      padding: 8px 24px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      background: var(--surface);
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .stat {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .stat-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    /* Tooltip */
+    .tooltip {
+      position: absolute;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 11px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+      z-index: 10;
+      min-width: 160px;
+    }
+
+    .tooltip.visible {
+      opacity: 1;
+    }
+
+    .tooltip-title {
+      font-weight: 600;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .tooltip-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 2px 0;
+    }
+
+    .tooltip-label {
+      color: var(--text-dim);
+    }
+
+    /* Partition overlay hint */
+    .partition-hint {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(15, 17, 23, 0.9);
+      border: 1px dashed var(--orange);
+      border-radius: 12px;
+      padding: 16px 24px;
+      font-size: 13px;
+      color: var(--orange);
+      pointer-events: none;
+      display: none;
+      z-index: 5;
+    }
+
+    /* Status HUD */
+    .sim-status {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .status-text {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+      background: rgba(10, 10, 12, 0.8);
+      padding: 6px 10px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      display: inline-flex;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-dim);
+    }
+
+    .status-dot.active {
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+    }
+
+    .status-dot.warn {
+      background: var(--orange);
+      box-shadow: 0 0 8px var(--orange);
+    }
+
+    .status-dot.error {
+      background: var(--red);
+      box-shadow: 0 0 8px var(--red);
+    }
+
+    .status-subtext {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--text-dim);
+      max-width: 350px;
+      line-height: 1.4;
+      background: rgba(10, 10, 12, 0.8);
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <header>
+      <h1><span>raft</span>-kv <span style="color:var(--text-dim);font-weight:400;font-size:12px;">consensus
+          visualization</span></h1>
+      <div class="header-links">
+        <a href="https://raft.github.io/" target="_blank">Raft Paper</a>
+        <a href="https://github.com" target="_blank">GitHub</a>
+      </div>
+    </header>
+
+    <div class="main-area">
+      <canvas id="canvas"></canvas>
+      <div class="sim-status" id="simStatus">
+        <div class="status-text">
+          <div class="status-dot" id="statusDot"></div>
+          <span id="statusTitle">Initializing...</span>
+        </div>
+        <div class="status-subtext" id="statusDesc">
+          System is starting up.
+        </div>
+      </div>
+      <div class="tooltip" id="tooltip"></div>
+      <div class="partition-hint" id="partitionHint">Click nodes to select partition group, then press Enter</div>
+    </div>
+
+    <div class="sidebar">
+      <div class="sidebar-section">
+        <h3>Cluster Controls</h3>
+        <div class="controls">
+          <div class="btn-row">
+            <button class="btn danger" id="btnKill">Kill Leader</button>
+            <button class="btn success" id="btnRestart">Restart All</button>
+          </div>
+          <button class="btn" id="btnPartition">Network Partition</button>
+          <button class="btn" id="btnHeal" style="display:none">Heal Partition</button>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>Send Operation</h3>
+        <div class="controls">
+          <div class="kv-input-row">
+            <input class="kv-input" id="kvKey" placeholder="key" maxlength="8">
+            <input class="kv-input" id="kvVal" placeholder="value" maxlength="8">
+          </div>
+          <div class="btn-row">
+            <button class="btn success" id="btnPut">Put</button>
+            <button class="btn" id="btnGet">Get</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>Simulation Speed</h3>
+        <div class="speed-row">
+          <label>Slow</label>
+          <input type="range" id="speedSlider" min="0.2" max="3" step="0.1" value="1">
+          <label>Fast</label>
+          <span class="speed-val" id="speedVal">1.0x</span>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>Replicated Log</h3>
+        <div class="node-logs" id="nodeLogs"></div>
+      </div>
+
+      <div class="log-panel">
+        <h3>Event Log</h3>
+        <div class="log-entries" id="logEntries"></div>
+      </div>
+    </div>
+
+    <div class="bottom-bar">
+      <div class="stat"><span class="stat-dot" style="background:var(--green)"></span> Leader</div>
+      <div class="stat"><span class="stat-dot" style="background:var(--blue)"></span> Follower</div>
+      <div class="stat"><span class="stat-dot" style="background:var(--orange)"></span> Candidate</div>
+      <div class="stat"><span class="stat-dot" style="background:var(--red)"></span> Down</div>
+      <div style="flex:1"></div>
+      <div class="stat" id="termStat">Term: 0</div>
+      <div class="stat" id="commitStat">Commits: 0</div>
+    </div>
+  </div>
+
+  <script>
+    // ─── Constants ──────────────────────────────────────────────────
+    const FOLLOWER = 0, CANDIDATE = 1, LEADER = 2, DOWN = 3;
+    const STATE_NAMES = ['Follower', 'Candidate', 'Leader', 'Down'];
+    const STATE_COLORS = ['#60a5fa', '#fbbf24', '#34d399', '#f87171'];
+    const STATE_GLOW = ['rgba(96,165,250,0.15)', 'rgba(251,191,36,0.15)', 'rgba(52,211,153,0.2)', 'rgba(248,113,113,0.1)'];
+    const NODE_RADIUS = 38;
+    const MSG_SPEED = 0.012; // per ms
+    const NUM_NODES = 5;
+    const HEARTBEAT_INTERVAL = 1500;
+    const ELECTION_TIMEOUT_BASE = 3000;
+    const ELECTION_TIMEOUT_SPREAD = 2000;
+
+    // ─── Raft Simulation ────────────────────────────────────────────
+    let simTime = 0;
+    let speed = 1;
+    let totalCommits = 0;
+    let partitioned = false;
+    let partitionGroups = null; // [Set, Set] or null
+
+    class LogEntry {
+      constructor(term, command) {
+        this.term = term;
+        this.command = command; // {type:'put'|'del', key, value}
+      }
+    }
+
+    class RaftNode {
+      constructor(id) {
+        this.id = id;
+        this.state = FOLLOWER;
+        this.currentTerm = 0;
+        this.votedFor = null;
+        this.log = [];
+        this.commitIndex = -1;
+        this.lastApplied = -1;
+        this.leaderId = null;
+
+        // Leader state
+        this.nextIndex = {};
+        this.matchIndex = {};
+
+        // Timing
+        this.electionDeadline = randomElectionTimeout();
+        this.heartbeatDeadline = 0;
+
+        // Election
+        this.votesReceived = new Set();
+
+        // Visual
+        this.x = 0; this.y = 0;
+        this.pulsePhase = Math.random() * Math.PI * 2;
+        this.stateChangeTime = 0;
+
+        // Pending client ops
+        this.pendingOps = []; // {index, resolve}
+      }
+
+      resetElectionTimer() {
+        this.electionDeadline = simTime + randomElectionTimeout();
+      }
+
+      becomeFollower(term) {
+        if (this.state === DOWN) return;
+        const wasLeader = this.state === LEADER;
+        this.state = FOLLOWER;
+        this.currentTerm = term;
+        this.votedFor = null;
+        this.votesReceived.clear();
+        this.resetElectionTimer();
+        this.stateChangeTime = simTime;
+        if (wasLeader) addLog(`Node ${this.id} stepped down to Follower (term ${term})`, 'election');
+        else if (this.state === CANDIDATE) addLog(`Node ${this.id} lost election, stepping down`, 'election');
+      }
+
+      becomeCandidate() {
+        if (this.state === DOWN) return;
+        this.state = CANDIDATE;
+        this.currentTerm++;
+        this.votedFor = this.id;
+        this.votesReceived = new Set([this.id]);
+        this.leaderId = null;
+        this.resetElectionTimer();
+        this.stateChangeTime = simTime;
+        addLog(`Node ${this.id} timeout → Starts Election (Term ${this.currentTerm})`, 'election');
+
+        // Request votes from all peers
+        for (const peer of nodes) {
+          if (peer.id !== this.id && peer.state !== DOWN && canCommunicate(this.id, peer.id)) {
+            sendMessage(this.id, peer.id, 'vote-req', {
+              term: this.currentTerm,
+              candidateId: this.id,
+              lastLogIndex: this.log.length - 1,
+              lastLogTerm: this.log.length > 0 ? this.log[this.log.length - 1].term : 0,
+            });
+          }
+        }
+      }
+
+      becomeLeader() {
+        if (this.state === DOWN) return;
+        this.state = LEADER;
+        this.leaderId = this.id;
+        this.stateChangeTime = simTime;
+        for (const peer of nodes) {
+          this.nextIndex[peer.id] = this.log.length;
+          this.matchIndex[peer.id] = -1;
+        }
+        this.matchIndex[this.id] = this.log.length - 1;
+        addLog(`Node ${this.id} received majority votes → Existing Leader`, 'leader');
+        this.sendHeartbeats();
+      }
+
+      sendHeartbeats() {
+        if (this.state !== LEADER || this.state === DOWN) return;
+        for (const peer of nodes) {
+          if (peer.id !== this.id && peer.state !== DOWN && canCommunicate(this.id, peer.id)) {
+            const nextIdx = this.nextIndex[peer.id] || 0;
+            const prevLogIndex = nextIdx - 1;
+            const prevLogTerm = prevLogIndex >= 0 && prevLogIndex < this.log.length ? this.log[prevLogIndex].term : 0;
+            const entries = this.log.slice(nextIdx);
+            sendMessage(this.id, peer.id, 'append-entries', {
+              term: this.currentTerm,
+              leaderId: this.id,
+              prevLogIndex,
+              prevLogTerm,
+              entries: entries.map(e => ({ term: e.term, command: e.command })),
+              leaderCommit: this.commitIndex,
+            });
+          }
+        }
+        this.heartbeatDeadline = simTime + HEARTBEAT_INTERVAL;
+      }
+
+      handleVoteRequest(msg) {
+        if (this.state === DOWN) return;
+        const { term, candidateId, lastLogIndex, lastLogTerm } = msg.data;
+
+        if (term > this.currentTerm) {
+          this.becomeFollower(term);
+        }
+
+        let granted = false;
+        if (term >= this.currentTerm && (this.votedFor === null || this.votedFor === candidateId)) {
+          const myLastTerm = this.log.length > 0 ? this.log[this.log.length - 1].term : 0;
+          const myLastIndex = this.log.length - 1;
+          if (lastLogTerm > myLastTerm || (lastLogTerm === myLastTerm && lastLogIndex >= myLastIndex)) {
+            granted = true;
+            this.votedFor = candidateId;
+            this.resetElectionTimer();
+          }
+        }
+
+        sendMessage(this.id, msg.from, 'vote-resp', {
+          term: this.currentTerm,
+          granted,
+          voterId: this.id,
+        });
+      }
+
+      handleVoteResponse(msg) {
+        if (this.state !== CANDIDATE || this.state === DOWN) return;
+        const { term, granted, voterId } = msg.data;
+
+        if (term > this.currentTerm) {
+          this.becomeFollower(term);
+          return;
+        }
+
+        if (granted && term === this.currentTerm) {
+          this.votesReceived.add(voterId);
+          if (this.votesReceived.size > NUM_NODES / 2) {
+            this.becomeLeader();
+          }
+        }
+      }
+
+      handleAppendEntries(msg) {
+        if (this.state === DOWN) return;
+        const { term, leaderId, prevLogIndex, prevLogTerm, entries, leaderCommit } = msg.data;
+
+        if (term < this.currentTerm) {
+          sendMessage(this.id, msg.from, 'append-resp', { term: this.currentTerm, success: false, matchIndex: -1 });
+          return;
+        }
+
+        if (term >= this.currentTerm) {
+          this.currentTerm = term;
+          if (this.state !== FOLLOWER) {
+            this.state = FOLLOWER;
+            this.stateChangeTime = simTime;
+          }
+          this.votedFor = null;
+          this.votesReceived.clear();
+        }
+        this.leaderId = leaderId;
+        this.resetElectionTimer();
+
+        // Log consistency check
+        let success = true;
+        if (prevLogIndex >= 0) {
+          if (prevLogIndex >= this.log.length || this.log[prevLogIndex].term !== prevLogTerm) {
+            success = false;
+          }
+        }
+
+        if (success && entries.length > 0) {
+          // Append new entries
+          let insertIdx = prevLogIndex + 1;
+          for (let i = 0; i < entries.length; i++) {
+            const idx = insertIdx + i;
+            if (idx < this.log.length) {
+              if (this.log[idx].term !== entries[i].term) {
+                this.log.length = idx;
+                this.log.push(new LogEntry(entries[i].term, entries[i].command));
+              }
+            } else {
+              this.log.push(new LogEntry(entries[i].term, entries[i].command));
+            }
+          }
+          if (entries.length > 0) {
+            addLog(`Node ${this.id} replicated ${entries.length} entries`, 'replicate');
+          }
+        }
+
+        if (success && leaderCommit > this.commitIndex) {
+          this.commitIndex = Math.min(leaderCommit, this.log.length - 1);
+        }
+
+        sendMessage(this.id, msg.from, 'append-resp', {
+          term: this.currentTerm,
+          success,
+          matchIndex: success ? (prevLogIndex + entries.length) : -1,
+        });
+      }
+
+      handleAppendResponse(msg) {
+        if (this.state !== LEADER || this.state === DOWN) return;
+        const { term, success, matchIndex } = msg.data;
+
+        if (term > this.currentTerm) {
+          this.becomeFollower(term);
+          return;
+        }
+
+        if (success) {
+          if (matchIndex >= 0) {
+            this.nextIndex[msg.from] = matchIndex + 1;
+            this.matchIndex[msg.from] = matchIndex;
+          }
+          this.tryAdvanceCommit();
+        } else {
+          this.nextIndex[msg.from] = Math.max(0, (this.nextIndex[msg.from] || 1) - 1);
+        }
+      }
+
+      tryAdvanceCommit() {
+        for (let n = this.log.length - 1; n > this.commitIndex; n--) {
+          if (this.log[n].term === this.currentTerm) {
+            let count = 1; // count self
+            for (const peer of nodes) {
+              if (peer.id !== this.id && (this.matchIndex[peer.id] || -1) >= n) count++;
+            }
+            if (count > NUM_NODES / 2) {
+              const oldCommit = this.commitIndex;
+              this.commitIndex = n;
+              totalCommits += (n - oldCommit);
+              for (let i = oldCommit + 1; i <= n; i++) {
+                const cmd = this.log[i].command;
+                if (cmd) {
+                  addLog(`Committed: ${cmd.type}(${cmd.key}${cmd.value ? ', ' + cmd.value : ''})`, 'commit');
+                }
+              }
+              // Resolve pending ops
+              this.pendingOps = this.pendingOps.filter(op => {
+                if (op.index <= n) { op.resolve(); return false; }
+                return true;
+              });
+              break;
+            }
+          }
+        }
+      }
+
+      tick(dt) {
+        if (this.state === DOWN) return;
+
+        // Election timeout
+        if (this.state !== LEADER && simTime >= this.electionDeadline) {
+          this.becomeCandidate();
+        }
+
+        // Heartbeats
+        if (this.state === LEADER && simTime >= this.heartbeatDeadline) {
+          this.sendHeartbeats();
+        }
+      }
+
+      submitCommand(cmd) {
+        if (this.state !== LEADER) return false;
+        const entry = new LogEntry(this.currentTerm, cmd);
+        this.log.push(entry);
+        this.matchIndex[this.id] = this.log.length - 1;
+        addLog(`Leader received: ${cmd.type}(${cmd.key}${cmd.value ? ', ' + cmd.value : ''})`, 'client');
+        // Immediately replicate
+        this.sendHeartbeats();
+        return true;
+      }
+    }
+
+    // ─── Status & Explanation ───────────────────────────────────────
+    function updateSimulationStatus() {
+      const dot = document.getElementById('statusDot');
+      const title = document.getElementById('statusTitle');
+      const desc = document.getElementById('statusDesc');
+
+      if (partitioned) {
+        dot.className = 'status-dot error';
+        title.textContent = 'Network Partitioned';
+        desc.textContent = 'The network is split. Nodes in different partitions cannot communicate. The minority partition will likely fail to commit new entries.';
+        return;
+      }
+
+      const leader = nodes.find(n => n.state === LEADER);
+      const candidates = nodes.filter(n => n.state === CANDIDATE);
+      const downNodes = nodes.filter(n => n.state === DOWN);
+
+      if (leader) {
+        dot.className = 'status-dot active';
+        title.textContent = `Stable (Leader: N${leader.id})`;
+        if (downNodes.length > 0) {
+          desc.textContent = `Cluster is operational, but ${downNodes.length} node(s) are DOWN. Leader N${leader.id} is managing replication.`;
+        } else {
+          desc.textContent = `Normal operation. Leader N${leader.id} is sending heartbeats and managing log replication to all followers.`;
+        }
+      } else if (candidates.length > 0) {
+        dot.className = 'status-dot warn';
+        title.textContent = 'Election in Progress';
+        desc.textContent = `Leader is missing/timed out. Nodes [${candidates.map(c => 'N' + c.id).join(', ')}] are requesting votes to become the new Leader.`;
+      } else {
+        // No leader, no candidates (maybe all followers waiting for timeout)
+        dot.className = 'status-dot warn';
+        title.textContent = 'Leader Timeout / Election Pending';
+        desc.textContent = 'Followers haven\'t heard from a leader recently. Election timers are counting down...';
+      }
+    }
+
+    // ─── Message System ─────────────────────────────────────────────
+    let messages = [];
+    let nodes = [];
+
+    class Message {
+      constructor(from, to, type, data) {
+        this.from = from;
+        this.to = to;
+        this.type = type;
+        this.data = data;
+        this.progress = 0; // 0 to 1
+        this.created = simTime;
+      }
+    }
+
+    function sendMessage(from, to, type, data) {
+      messages.push(new Message(from, to, type, data));
+    }
+
+    function canCommunicate(id1, id2) {
+      if (!partitioned || !partitionGroups) return true;
+      const [g1, g2] = partitionGroups;
+      if (g1.has(id1) && g1.has(id2)) return true;
+      if (g2.has(id1) && g2.has(id2)) return true;
+      return false;
+    }
+
+    function randomElectionTimeout() {
+      return simTime + ELECTION_TIMEOUT_BASE + Math.random() * ELECTION_TIMEOUT_SPREAD;
+    }
+
+    // ─── Cluster Init ───────────────────────────────────────────────
+    function initCluster() {
+      nodes = [];
+      messages = [];
+      simTime = 0;
+      totalCommits = 0;
+      partitioned = false;
+      partitionGroups = null;
+      for (let i = 0; i < NUM_NODES; i++) {
+        nodes.push(new RaftNode(i + 1));
+      }
+    }
+
+    // ─── Event Log ──────────────────────────────────────────────────
+    const logContainer = document.getElementById('logEntries');
+    function addLog(text, cls = '') {
+      const div = document.createElement('div');
+      div.className = 'log-entry' + (cls ? ' ' + cls : '');
+      const t = (simTime / 1000).toFixed(1);
+      div.innerHTML = `<span class="time">${t}s</span>${text}`;
+      logContainer.prepend(div);
+      // Keep max 100 entries
+      while (logContainer.children.length > 100) logContainer.removeChild(logContainer.lastChild);
+    }
+
+    // ─── Canvas Rendering ───────────────────────────────────────────
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let W, H, cx, cy, clusterRadius;
+
+    function resize() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      W = rect.width;
+      H = rect.height;
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+      canvas.style.width = W + 'px';
+      canvas.style.height = H + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      cx = W / 2;
+      cy = H / 2;
+      clusterRadius = Math.min(W, H) * 0.32;
+      layoutNodes();
+    }
+
+    function layoutNodes() {
+      for (let i = 0; i < nodes.length; i++) {
+        const angle = (i / nodes.length) * Math.PI * 2 - Math.PI / 2;
+        nodes[i].x = cx + Math.cos(angle) * clusterRadius;
+        nodes[i].y = cy + Math.sin(angle) * clusterRadius;
+      }
+    }
+
+    function getNodeById(id) {
+      return nodes.find(n => n.id === id);
+    }
+
+    function drawNode(node) {
+      const { x, y, state, id, currentTerm } = node;
+      const color = STATE_COLORS[state];
+      const glow = STATE_GLOW[state];
+
+      // Glow
+      const pulse = 1 + Math.sin(simTime * 0.003 + node.pulsePhase) * 0.08;
+      const glowRadius = NODE_RADIUS * 1.8 * pulse;
+      const gradient = ctx.createRadialGradient(x, y, NODE_RADIUS * 0.5, x, y, glowRadius);
+      gradient.addColorStop(0, glow);
+      gradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(x, y, glowRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Ring
+      ctx.beginPath();
+      ctx.arc(x, y, NODE_RADIUS, 0, Math.PI * 2);
+      ctx.fillStyle = '#1a1d27';
+      ctx.fill();
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = color;
+      ctx.stroke();
+
+      // Election timeout arc (for followers/candidates)
+      if (state === FOLLOWER || state === CANDIDATE) {
+        const remaining = (node.electionDeadline - simTime);
+        const total = ELECTION_TIMEOUT_BASE + ELECTION_TIMEOUT_SPREAD / 2;
+        const frac = Math.max(0, Math.min(1, remaining / total));
+        ctx.beginPath();
+        ctx.arc(x, y, NODE_RADIUS + 5, -Math.PI / 2, -Math.PI / 2 + (1 - frac) * Math.PI * 2);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = state === CANDIDATE ? 'rgba(251,191,36,0.4)' : 'rgba(96,165,250,0.2)';
+        ctx.stroke();
+      }
+
+      // Leader crown indicator
+      if (state === LEADER) {
+        ctx.beginPath();
+        const crownY = y - NODE_RADIUS - 12;
+        ctx.moveTo(x - 10, crownY + 6);
+        ctx.lineTo(x - 7, crownY);
+        ctx.lineTo(x, crownY + 4);
+        ctx.lineTo(x + 7, crownY);
+        ctx.lineTo(x + 10, crownY + 6);
+        ctx.strokeStyle = var_green;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      // Node ID
+      ctx.fillStyle = color;
+      ctx.font = 'bold 16px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`N${id}`, x, y - 4);
+
+      // State label
+      ctx.fillStyle = 'rgba(225,228,237,0.5)';
+      ctx.font = '9px "JetBrains Mono", monospace';
+      ctx.fillText(STATE_NAMES[state], x, y + 12);
+
+      // Term below node
+      ctx.fillStyle = '#4a4d5a';
+      ctx.font = '10px "JetBrains Mono", monospace';
+      ctx.fillText(`T${currentTerm}`, x, y + NODE_RADIUS + 16);
+    }
+
+    const var_green = '#34d399';
+
+    function drawMessage(msg) {
+      const fromNode = getNodeById(msg.from);
+      const toNode = getNodeById(msg.to);
+      if (!fromNode || !toNode) return;
+
+      const t = msg.progress;
+      const mx = fromNode.x + (toNode.x - fromNode.x) * t;
+      const my = fromNode.y + (toNode.y - fromNode.y) * t;
+
+      let color, radius;
+      switch (msg.type) {
+        case 'vote-req':
+          color = '#fbbf24'; radius = 4; break;
+        case 'vote-resp':
+          color = msg.data.granted ? '#34d399' : '#f87171'; radius = 3; break;
+        case 'append-entries':
+          color = msg.data.entries && msg.data.entries.length > 0 ? '#a78bfa' : 'rgba(96,165,250,0.4)';
+          radius = msg.data.entries && msg.data.entries.length > 0 ? 5 : 2.5;
+          break;
+        case 'append-resp':
+          color = msg.data.success ? 'rgba(52,211,153,0.5)' : 'rgba(248,113,113,0.5)';
+          radius = 2.5; break;
+        default:
+          color = '#8b8fa3'; radius = 3;
+      }
+
+      // Trail
+      if (radius > 3) {
+        ctx.beginPath();
+        ctx.moveTo(fromNode.x, fromNode.y);
+        ctx.lineTo(mx, my);
+        ctx.strokeStyle = color.replace(')', ',0.15)').replace('rgb', 'rgba').replace('rgba', 'rgba');
+        if (!color.startsWith('rgba')) ctx.strokeStyle = color + '30';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+
+      // Dot
+      ctx.beginPath();
+      ctx.arc(mx, my, radius, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+
+      // Label for data-carrying messages
+      if (msg.type === 'append-entries' && msg.data.entries && msg.data.entries.length > 0 && t > 0.3 && t < 0.7) {
+        ctx.fillStyle = 'rgba(167,139,250,0.8)';
+        ctx.font = '9px "JetBrains Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${msg.data.entries.length} entry`, mx, my - 10);
+      }
+    }
+
+    function drawPartitionLine() {
+      if (!partitioned || !partitionGroups) return;
+      // Draw a dashed line separating the two groups
+      const [g1, g2] = partitionGroups;
+      const g1Nodes = nodes.filter(n => g1.has(n.id));
+      const g2Nodes = nodes.filter(n => g2.has(n.id));
+
+      // Find center of each group
+      const c1x = g1Nodes.reduce((s, n) => s + n.x, 0) / g1Nodes.length;
+      const c1y = g1Nodes.reduce((s, n) => s + n.y, 0) / g1Nodes.length;
+      const c2x = g2Nodes.reduce((s, n) => s + n.x, 0) / g2Nodes.length;
+      const c2y = g2Nodes.reduce((s, n) => s + n.y, 0) / g2Nodes.length;
+
+      // Draw perpendicular bisector
+      const midX = (c1x + c2x) / 2;
+      const midY = (c1y + c2y) / 2;
+      const dx = c2x - c1x;
+      const dy = c2y - c1y;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      const nx = -dy / len * 400;
+      const ny = dx / len * 400;
+
+      ctx.beginPath();
+      ctx.moveTo(midX - nx, midY - ny);
+      ctx.lineTo(midX + nx, midY + ny);
+      ctx.setLineDash([8, 8]);
+      ctx.strokeStyle = 'rgba(248,113,113,0.3)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Labels
+      ctx.font = '10px "JetBrains Mono", monospace';
+      ctx.fillStyle = 'rgba(248,113,113,0.5)';
+      ctx.textAlign = 'center';
+      ctx.fillText('PARTITION', midX, midY - 10);
+    }
+
+    // ─── Node Logs Display ──────────────────────────────────────────
+    const nodeLogsContainer = document.getElementById('nodeLogs');
+    function updateNodeLogs() {
+      nodeLogsContainer.innerHTML = '';
+      for (const node of nodes) {
+        const row = document.createElement('div');
+        row.className = 'node-log-row';
+        const label = document.createElement('span');
+        label.className = 'node-log-label';
+        label.style.color = STATE_COLORS[node.state];
+        label.textContent = `N${node.id}`;
+        row.appendChild(label);
+        const entries = document.createElement('div');
+        entries.className = 'node-log-entries';
+        for (let i = 0; i < node.log.length; i++) {
+          const block = document.createElement('div');
+          block.className = 'log-block ' + (i <= node.commitIndex ? 'committed' : 'uncommitted');
+          const cmd = node.log[i].command;
+          block.textContent = cmd ? cmd.key.substring(0, 3) : '?';
+          block.title = cmd ? `${cmd.type}(${cmd.key}${cmd.value ? '=' + cmd.value : ''}) T${node.log[i].term}` : '';
+          entries.appendChild(block);
+        }
+        row.appendChild(entries);
+        nodeLogsContainer.appendChild(row);
+      }
+    }
+
+    // ─── Tooltip ────────────────────────────────────────────────────
+    const tooltip = document.getElementById('tooltip');
+    let hoveredNode = null;
+
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      hoveredNode = null;
+      for (const n of nodes) {
+        const dx = mx - n.x, dy = my - n.y;
+        if (dx * dx + dy * dy < NODE_RADIUS * NODE_RADIUS * 1.5) {
+          hoveredNode = n;
+          break;
+        }
+      }
+      if (hoveredNode) {
+        const n = hoveredNode;
+        tooltip.innerHTML = `
+      <div class="tooltip-title" style="color:${STATE_COLORS[n.state]}">Node ${n.id}</div>
+      <div class="tooltip-row"><span class="tooltip-label">State</span><span>${STATE_NAMES[n.state]}</span></div>
+      <div class="tooltip-row"><span class="tooltip-label">Term</span><span>${n.currentTerm}</span></div>
+      <div class="tooltip-row"><span class="tooltip-label">Log size</span><span>${n.log.length}</span></div>
+      <div class="tooltip-row"><span class="tooltip-label">Committed</span><span>${n.commitIndex + 1}</span></div>
+      <div class="tooltip-row"><span class="tooltip-label">Leader</span><span>${n.leaderId || '—'}</span></div>
+      <div class="tooltip-row"><span class="tooltip-label">Voted for</span><span>${n.votedFor || '—'}</span></div>
+    `;
+        tooltip.style.left = Math.min(mx + 15, W - 200) + 'px';
+        tooltip.style.top = (my - 10) + 'px';
+        tooltip.classList.add('visible');
+        canvas.style.cursor = 'pointer';
+      } else {
+        tooltip.classList.remove('visible');
+        canvas.style.cursor = 'default';
+      }
+    });
+
+    // ─── Click to kill/restart individual node ──────────────────────
+    let partitionSelecting = false;
+    let partitionSelected = new Set();
+
+    canvas.addEventListener('click', (e) => {
+      if (!hoveredNode) return;
+
+      if (partitionSelecting) {
+        const id = hoveredNode.id;
+        if (partitionSelected.has(id)) partitionSelected.delete(id);
+        else partitionSelected.add(id);
+        return;
+      }
+
+      // Toggle node up/down
+      if (hoveredNode.state === DOWN) {
+        hoveredNode.state = FOLLOWER;
+        hoveredNode.currentTerm = Math.max(...nodes.map(n => n.currentTerm));
+        hoveredNode.votedFor = null;
+        hoveredNode.resetElectionTimer();
+        hoveredNode.stateChangeTime = simTime;
+        addLog(`Node ${hoveredNode.id} restarted`, 'leader');
+      } else {
+        hoveredNode.state = DOWN;
+        hoveredNode.stateChangeTime = simTime;
+        addLog(`Node ${hoveredNode.id} killed`, 'failure');
+      }
+    });
+
+    // ─── Controls ───────────────────────────────────────────────────
+    document.getElementById('btnKill').addEventListener('click', () => {
+      const leader = nodes.find(n => n.state === LEADER);
+      if (leader) {
+        leader.state = DOWN;
+        leader.stateChangeTime = simTime;
+        addLog(`Leader Node ${leader.id} killed!`, 'failure');
+      } else {
+        addLog('No leader to kill', 'failure');
+      }
+    });
+
+    document.getElementById('btnRestart').addEventListener('click', () => {
+      const maxTerm = Math.max(...nodes.map(n => n.currentTerm));
+      for (const n of nodes) {
+        if (n.state === DOWN) {
+          n.state = FOLLOWER;
+          n.currentTerm = maxTerm;
+          n.votedFor = null;
+          n.resetElectionTimer();
+          n.stateChangeTime = simTime;
+        }
+      }
+      addLog('All downed nodes restarted', 'leader');
+    });
+
+    document.getElementById('btnPartition').addEventListener('click', () => {
+      if (partitioned) return;
+      partitionSelecting = true;
+      partitionSelected = new Set();
+      document.getElementById('partitionHint').style.display = 'block';
+      document.getElementById('btnPartition').textContent = 'Select nodes...';
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && partitionSelecting) {
+        partitionSelecting = false;
+        document.getElementById('partitionHint').style.display = 'none';
+        if (partitionSelected.size > 0 && partitionSelected.size < NUM_NODES) {
+          const g1 = new Set(partitionSelected);
+          const g2 = new Set(nodes.map(n => n.id).filter(id => !g1.has(id)));
+          partitionGroups = [g1, g2];
+          partitioned = true;
+          document.getElementById('btnPartition').style.display = 'none';
+          document.getElementById('btnHeal').style.display = '';
+          addLog(`Network partitioned: [${[...g1]}] | [${[...g2]}]`, 'failure');
+          // Reset election timers so partition effect kicks in
+          for (const n of nodes) { if (n.state !== DOWN) n.resetElectionTimer(); }
+        } else {
+          document.getElementById('btnPartition').textContent = 'Network Partition';
+        }
+      } else if (e.key === 'Escape' && partitionSelecting) {
+        partitionSelecting = false;
+        partitionSelected.clear();
+        document.getElementById('partitionHint').style.display = 'none';
+        document.getElementById('btnPartition').textContent = 'Network Partition';
+      }
+    });
+
+    document.getElementById('btnHeal').addEventListener('click', () => {
+      partitioned = false;
+      partitionGroups = null;
+      document.getElementById('btnHeal').style.display = 'none';
+      document.getElementById('btnPartition').style.display = '';
+      document.getElementById('btnPartition').textContent = 'Network Partition';
+      addLog('Network partition healed', 'leader');
+      for (const n of nodes) { if (n.state !== DOWN) n.resetElectionTimer(); }
+    });
+
+    document.getElementById('btnPut').addEventListener('click', () => {
+      const key = document.getElementById('kvKey').value || 'key';
+      const val = document.getElementById('kvVal').value || 'val';
+      const leader = nodes.find(n => n.state === LEADER);
+      if (leader) {
+        leader.submitCommand({ type: 'put', key, value: val });
+      } else {
+        addLog('No leader available — operation rejected', 'failure');
+      }
+    });
+
+    document.getElementById('btnGet').addEventListener('click', () => {
+      const key = document.getElementById('kvKey').value || 'key';
+      const leader = nodes.find(n => n.state === LEADER);
+      if (leader) {
+        const entry = [...leader.log].reverse().find(e => e.command && e.command.key === key && e.command.type === 'put');
+        if (entry) {
+          addLog(`Get(${key}) → "${entry.command.value}"`, 'client');
+        } else {
+          addLog(`Get(${key}) → not found`, 'client');
+        }
+      } else {
+        addLog('No leader available — operation rejected', 'failure');
+      }
+    });
+
+    const speedSlider = document.getElementById('speedSlider');
+    const speedVal = document.getElementById('speedVal');
+    speedSlider.addEventListener('input', () => {
+      speed = parseFloat(speedSlider.value);
+      speedVal.textContent = speed.toFixed(1) + 'x';
+    });
+
+    // ─── Main Loop ──────────────────────────────────────────────────
+    let lastTime = 0;
+    let logUpdateCounter = 0;
+
+    function tick(timestamp) {
+      if (!lastTime) lastTime = timestamp;
+      const realDt = Math.min(timestamp - lastTime, 100);
+      lastTime = timestamp;
+      const dt = realDt * speed;
+      simTime += dt;
+
+      // Update nodes
+      for (const node of nodes) node.tick(dt);
+
+      // Update messages
+      for (const msg of messages) {
+        msg.progress += MSG_SPEED * dt;
+      }
+
+      // Deliver messages
+      const delivered = messages.filter(m => m.progress >= 1);
+      messages = messages.filter(m => m.progress < 1);
+      for (const msg of delivered) {
+        const target = getNodeById(msg.to);
+        if (!target || target.state === DOWN || !canCommunicate(msg.from, msg.to)) continue;
+        switch (msg.type) {
+          case 'vote-req': target.handleVoteRequest(msg); break;
+          case 'vote-resp': target.handleVoteResponse(msg); break;
+          case 'append-entries': target.handleAppendEntries(msg); break;
+          case 'append-resp': target.handleAppendResponse(msg); break;
+        }
+      }
+
+      // Render
+      ctx.clearRect(0, 0, W, H);
+
+      // Draw faint connection lines
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const a = nodes[i], b = nodes[j];
+          const canComm = canCommunicate(a.id, b.id);
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.strokeStyle = canComm ? 'rgba(42,45,58,0.5)' : 'rgba(248,113,113,0.08)';
+          ctx.lineWidth = 1;
+          if (!canComm) ctx.setLineDash([4, 6]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      }
+
+      drawPartitionLine();
+      for (const msg of messages) drawMessage(msg);
+      for (const node of nodes) drawNode(node);
+
+      // Partition selection highlight
+      if (partitionSelecting) {
+        for (const id of partitionSelected) {
+          const n = getNodeById(id);
+          if (!n) continue;
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, NODE_RADIUS + 10, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(248,113,113,0.6)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([5, 5]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      }
+
+      // Update stats
+      const leader = nodes.find(n => n.state === LEADER);
+      const maxTerm = Math.max(...nodes.map(n => n.currentTerm));
+      document.getElementById('termStat').textContent = `Term: ${maxTerm}`;
+      document.getElementById('commitStat').textContent = `Commits: ${totalCommits}`;
+
+      // Update log view periodically
+      logUpdateCounter++;
+      if (logUpdateCounter % 30 === 0) updateNodeLogs();
+
+      if (logUpdateCounter % 10 === 0) updateSimulationStatus();
+
+      requestAnimationFrame(tick);
+    }
+
+    // ─── Start ──────────────────────────────────────────────────────
+    initCluster();
+    window.addEventListener('resize', resize);
+    resize();
+    addLog('Cluster initialized with 5 nodes', 'leader');
+    addLog('Waiting for election timeout...', '');
+    requestAnimationFrame(tick);
+  </script>
+</body>
+
+</html>

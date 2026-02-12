@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package raft;
+
+option go_package = "github.com/aarush/raft-kv/pkg/transport/proto";
+
+// Raft consensus RPCs
+
+service RaftService {
+    // RequestVote is invoked by candidates to gather votes
+    rpc RequestVote(RequestVoteRequest) returns (RequestVoteResponse);
+
+    // AppendEntries is invoked by leader to replicate log entries and send heartbeats
+    rpc AppendEntries(AppendEntriesRequest) returns (AppendEntriesResponse);
+
+    // InstallSnapshot is invoked by leader to send snapshot chunks to followers
+    rpc InstallSnapshot(InstallSnapshotRequest) returns (InstallSnapshotResponse);
+}
+
+// Log entry represents a single entry in the Raft log
+message LogEntry {
+    uint64 index = 1;
+    uint64 term = 2;
+    bytes command = 3;  // Serialized command for the state machine
+}
+
+// RequestVote RPC - used during leader election
+message RequestVoteRequest {
+    uint64 term = 1;           // Candidate's term
+    uint64 candidate_id = 2;   // Candidate requesting vote
+    uint64 last_log_index = 3; // Index of candidate's last log entry
+    uint64 last_log_term = 4;  // Term of candidate's last log entry
+}
+
+message RequestVoteResponse {
+    uint64 term = 1;        // Current term, for candidate to update itself
+    bool vote_granted = 2;  // True if candidate received vote
+}
+
+// AppendEntries RPC - used for log replication and heartbeats
+message AppendEntriesRequest {
+    uint64 term = 1;              // Leader's term
+    uint64 leader_id = 2;         // Leader's ID so follower can redirect clients
+    uint64 prev_log_index = 3;    // Index of log entry immediately preceding new ones
+    uint64 prev_log_term = 4;     // Term of prev_log_index entry
+    repeated LogEntry entries = 5; // Log entries to store (empty for heartbeat)
+    uint64 leader_commit = 6;     // Leader's commit index
+}
+
+message AppendEntriesResponse {
+    uint64 term = 1;     // Current term, for leader to update itself
+    bool success = 2;    // True if follower contained entry matching prev_log_index and prev_log_term
+
+    // Optimization: help leader find correct nextIndex faster
+    uint64 conflict_index = 3;  // First index of conflicting term
+    uint64 conflict_term = 4;   // Term of conflicting entry
+}
+
+// InstallSnapshot RPC - used for sending snapshots to lagging followers
+message InstallSnapshotRequest {
+    uint64 term = 1;               // Leader's term
+    uint64 leader_id = 2;          // Leader's ID
+    uint64 last_included_index = 3; // Snapshot replaces all entries up to this index
+    uint64 last_included_term = 4;  // Term of last_included_index
+    uint64 offset = 5;             // Byte offset where chunk is positioned
+    bytes data = 6;                // Raw bytes of snapshot chunk
+    bool done = 7;                 // True if this is the last chunk
+}
+
+message InstallSnapshotResponse {
+    uint64 term = 1;  // Current term, for leader to update itself
+}

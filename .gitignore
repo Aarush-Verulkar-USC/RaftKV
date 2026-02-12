@@ -1,0 +1,24 @@
+# Binaries
+bin/
+*.exe
+*.out
+
+# Data / runtime state
+data/
+
+# Go
+*.test
+coverage.out
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Claude
+.claude/

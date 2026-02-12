@@ -1,0 +1,91 @@
+# raft-kv cluster configuration
+#
+# This is a sample configuration for a 3-node cluster running locally.
+# Modify addresses for production deployments.
+
+cluster:
+  # Cluster name (for logging/identification)
+  name: "raft-kv-dev"
+
+  # Number of nodes in the cluster
+  # For fault tolerance: can tolerate (n-1)/2 failures
+  # 3 nodes = 1 failure, 5 nodes = 2 failures
+  nodes: 3
+
+# Node configurations
+nodes:
+  - id: 1
+    client_addr: "localhost:9001"
+    raft_addr: "localhost:8001"
+    data_dir: "./data/node1"
+
+  - id: 2
+    client_addr: "localhost:9002"
+    raft_addr: "localhost:8002"
+    data_dir: "./data/node2"
+
+  - id: 3
+    client_addr: "localhost:9003"
+    raft_addr: "localhost:8003"
+    data_dir: "./data/node3"
+
+# Raft configuration
+raft:
+  # Election timeout range (milliseconds)
+  # Leader sends heartbeats within this window to prevent elections
+  election_timeout_min: 150
+  election_timeout_max: 300
+
+  # Heartbeat interval (milliseconds)
+  # Should be much less than election timeout
+  heartbeat_interval: 50
+
+  # Maximum entries per AppendEntries RPC
+  max_entries_per_request: 100
+
+  # Snapshot configuration
+  snapshot:
+    # Take snapshot after this many log entries
+    threshold: 10000
+    # Maximum size of snapshot chunks (bytes)
+    chunk_size: 1048576  # 1MB
+
+# Storage configuration
+storage:
+  # Storage engine: "bolt" or "memory" (memory is for testing only)
+  engine: "bolt"
+
+  # BoltDB options
+  bolt:
+    # Sync writes to disk (disable for better performance, less durability)
+    sync: true
+    # Page size
+    page_size: 4096
+
+# Network configuration
+network:
+  # Connection timeout (seconds)
+  connect_timeout: 5
+
+  # RPC timeout (seconds)
+  rpc_timeout: 1
+
+  # Keep-alive interval (seconds)
+  keepalive_interval: 10
+
+# Logging configuration
+logging:
+  # Log level: debug, info, warn, error
+  level: "info"
+
+  # Log format: text, json
+  format: "text"
+
+  # Log to file (empty for stdout)
+  file: ""
+
+# Metrics configuration (future)
+metrics:
+  enabled: false
+  addr: ":9090"
+  path: "/metrics"
